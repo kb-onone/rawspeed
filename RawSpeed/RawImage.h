@@ -152,6 +152,7 @@ public:
   uint32 mBadPixelMapPitch;
   bool mDitherScale;           // Should upscaling be done with dither to minimize banding?
   ImageMetaData metadata;
+  bool *mCancelDecoder=nullptr;
 
 protected:
   RawImageType dataType;

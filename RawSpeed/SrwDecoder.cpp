@@ -129,6 +129,10 @@ void SrwDecoder::decodeCompressed( TiffIFD* raw )
   b->setAbsoluteOffset(compressed_offset);
 
   for (uint32 y = 0; y < height; y++) {
+	  
+    if (mRaw->mCancelDecoder && *(mRaw->mCancelDecoder))
+        break;
+	  
     uint32 line_offset = offset + b->getInt();
     if (line_offset >= mFile->getSize())
       ThrowRDE("Srw decoder: Offset outside image file, file probably truncated.");
@@ -201,6 +205,10 @@ void SrwDecoder::decodeCompressed( TiffIFD* raw )
 
   // Swap red and blue pixels to get the final CFA pattern
   for (uint32 y = 0; y < height-1; y+=2) {
+	  
+    if ( *mCancelDecoder )
+		break;
+	  
     ushort16* topline = (ushort16*)mRaw->getData(0, y);
     ushort16* bottomline = (ushort16*)mRaw->getData(0, y+1);
     for (uint32 x = 0; x < width-1; x += 2) {
@@ -251,6 +259,10 @@ void SrwDecoder::decodeCompressed2( TiffIFD* raw, int bits)
 
   BitPumpMSB pump(mFile, offset);
   for (uint32 y = 0; y < height; y++) {
+	  
+    if ( *mCancelDecoder )
+        break;
+	  
     ushort16* img = (ushort16*)mRaw->getData(0, y);
     for (uint32 x = 0; x < width; x++) {
       int32 diff = samsungDiff(pump, tbl);
@@ -330,6 +342,10 @@ void SrwDecoder::decodeCompressed3( TiffIFD* raw, int bits)
   uint32 diffBitsMode[3][2] = {{0}};
   uint32 line_offset = startpump.getOffset();
   for (uint32 row=0; row < height; row++) {
+	  
+    if ( *mCancelDecoder )
+        break;
+	  
     // Align pump to 16byte boundary
     if ((line_offset & 0xf) != 0)
       line_offset += 16 - (line_offset & 0xf);

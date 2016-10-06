@@ -28,6 +28,7 @@ LJpegPlain::LJpegPlain(FileMap* file, RawImage img) :
     LJpegDecompressor(file, img) {
   offset = 0;
   slice_width = 0;
+  mCancelDecoder = 0;
 }
 
 LJpegPlain::~LJpegPlain(void) {
@@ -73,6 +74,9 @@ void LJpegPlain::decodeScan() {
     ThrowRDE("LJpegPlain::decodeScan: Image width or height set to zero");
 
   for (uint32 i = 0; i < frame.cps;  i++) {
+    if ( mCancelDecoder && *mCancelDecoder )
+        break;
+	  
     if (frame.compInfo[i].superH != 1 || frame.compInfo[i].superV != 1) {
       if (mRaw->isCFA)
         ThrowRDE("LJpegDecompressor::decodeScan: Cannot decode subsampled image to CFA data");
@@ -254,6 +258,10 @@ void LJpegPlain::decodeScanLeftGeneric() {
 
   uint32 cw = (frame.w - skipX);
   for (uint32 y = 0;y < (frame.h - skipY);y += maxSuperV) {
+	  
+    if ( mCancelDecoder && *mCancelDecoder )
+        break;
+	  
     for (; x < cw ; x += maxSuperH) {
 
       if (0 == pixInSlice) { // Next slice
@@ -402,6 +410,10 @@ void LJpegPlain::decodeScanLeft4_2_0() {
 
   uint32 cw = (frame.w - skipX);
   for (uint32 y = 0;y < (frame.h - skipY);y += 2) {
+	
+	if ( mCancelDecoder && *mCancelDecoder )
+        break;
+	  
     for (; x < cw ; x += 2) {
 
       if (0 == pixInSlice) { // Next slice
@@ -834,6 +846,9 @@ void LJpegPlain::decodeScanLeft4Comps() {
     skipY = frame.h >> 1;
 
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
+	if ( mCancelDecoder && *mCancelDecoder )
+        break;
+	  
     for (; x < cw ; x++) {
       p1 += HuffDecode(dctbl1);
       *dest++ = (ushort16)p1;

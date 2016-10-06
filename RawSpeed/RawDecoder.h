@@ -129,6 +129,8 @@ public:
   /* Returns NULL if unknown */
   virtual FileMap* getCompressedData() {return NULL;}
 
+  bool *mCancelDecoder;
+  
 protected:
   /* Attempt to decode the image */
   /* A RawDecoderException will be thrown if the image cannot be decoded, */

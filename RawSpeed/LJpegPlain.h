@@ -37,6 +37,7 @@ class LJpegPlain :
 public:
   LJpegPlain(FileMap* file, RawImage img);
   virtual ~LJpegPlain(void);
+  bool *mCancelDecoder;
 protected:
   virtual void decodeScan();
 private:

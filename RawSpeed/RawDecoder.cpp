@@ -33,6 +33,7 @@ RawDecoder::RawDecoder(FileMap* file) : mRaw(RawImage::create()), mFile(file) {
   applyCrop = TRUE;
   uncorrectedRawValues = FALSE;
   fujiRotate = TRUE;
+  mCancelDecoder = (bool *)0;
 }
 
 RawDecoder::~RawDecoder(void) {

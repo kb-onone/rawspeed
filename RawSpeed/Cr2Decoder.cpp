@@ -76,6 +76,9 @@ RawImage Cr2Decoder::decodeRawInternal() {
 
     mRaw->createData();
     LJpegPlain l(mFile, mRaw);
+	
+    l.mCancelDecoder = mCancelDecoder;
+	
     try {
       l.startDecoder(off, mFile->getSize()-off, 0, 0);
     } catch (IOException& e) {
