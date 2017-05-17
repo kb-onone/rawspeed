@@ -26,6 +26,7 @@
 #if defined(__APPLE__)
 #include <CoreServices/CoreServices.h>
 
+#ifdef NOTUSED_MJ
 int macosx_version()
 {
   SInt32 gestalt_version;
@@ -35,6 +36,20 @@ int macosx_version()
   }
   return ver;
 }
+#endif
+
+int macosx_version()
+{
+  SInt32 gestalt_version;
+  static int ver = 0; // cached
+
+  // HACK_MIJ Hardcoded 0x1060
+  if (0 == ver ) { // && (Gestalt(gestaltSystemVersion, &gestalt_version) == noErr)) {
+    ver = 0x1060; // gestalt_version;
+  }
+  return ver;
+}
+
 void* _aligned_malloc(size_t bytes, size_t alignment) {
 
   if (macosx_version() >=0x1060) { // 10.6+
@@ -43,9 +58,10 @@ void* _aligned_malloc(size_t bytes, size_t alignment) {
       return ret;
     else
       return NULL;
-  } 
+  }
   return malloc(bytes); // Mac OS X malloc is usually aligned to 16 bytes
 }
+
 
 #elif defined(__unix__)
 

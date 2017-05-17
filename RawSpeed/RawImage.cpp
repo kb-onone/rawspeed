@@ -68,6 +68,9 @@ ImageMetaData::ImageMetaData(void) {
 
 RawImageData::~RawImageData(void) {
   _ASSERTE(dataRefCount == 0);
+ // printf("Deleted %lx\n", data);
+ // fflush(stdout);
+
   mOffset = iPoint2D(0, 0);
   pthread_mutex_destroy(&mymutex);
   pthread_mutex_destroy(&errMutex);

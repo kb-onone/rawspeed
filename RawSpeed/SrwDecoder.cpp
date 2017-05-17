@@ -206,7 +206,7 @@ void SrwDecoder::decodeCompressed( TiffIFD* raw )
   // Swap red and blue pixels to get the final CFA pattern
   for (uint32 y = 0; y < height-1; y+=2) {
 	  
-    if ( *mCancelDecoder )
+    if ( mCancelDecoder && *mCancelDecoder )
 		break;
 	  
     ushort16* topline = (ushort16*)mRaw->getData(0, y);
@@ -260,7 +260,7 @@ void SrwDecoder::decodeCompressed2( TiffIFD* raw, int bits)
   BitPumpMSB pump(mFile, offset);
   for (uint32 y = 0; y < height; y++) {
 	  
-    if ( *mCancelDecoder )
+    if ( mCancelDecoder && *mCancelDecoder )
         break;
 	  
     ushort16* img = (ushort16*)mRaw->getData(0, y);
@@ -343,7 +343,7 @@ void SrwDecoder::decodeCompressed3( TiffIFD* raw, int bits)
   uint32 line_offset = startpump.getOffset();
   for (uint32 row=0; row < height; row++) {
 	  
-    if ( *mCancelDecoder )
+    if ( mCancelDecoder && *mCancelDecoder )
         break;
 	  
     // Align pump to 16byte boundary
@@ -513,6 +513,5 @@ void SrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
     }
   }
 }
-
 
 } // namespace RawSpeed

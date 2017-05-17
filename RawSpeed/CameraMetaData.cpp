@@ -27,6 +27,28 @@ namespace RawSpeed {
 CameraMetaData::CameraMetaData() {
 }
 
+CameraMetaData::CameraMetaData(const wchar_t *docname) {
+	xml_document doc;
+	xml_parse_result result = doc.load_file(docname);
+
+	if (!result) {
+		ThrowCME("CameraMetaData: XML Document could not be parsed successfully. Error was: %s in %s",
+			result.description(), doc.child("node").attribute("attr").value());
+	}
+	xml_node cameras = doc.child("Cameras");
+
+	for (xml_node camera = cameras.child("Camera"); camera; camera = camera.next_sibling("Camera")) {
+		Camera *cam = new Camera(camera);
+
+		if (!addCamera(cam)) continue;
+
+		// Create cameras for aliases.
+		for (uint32 i = 0; i < cam->aliases.size(); i++) {
+			addCamera(new Camera(cam, i));
+		}
+	}
+}
+
 CameraMetaData::CameraMetaData(const char *docname) {
   xml_document doc;
   xml_parse_result result = doc.load_file(docname);
@@ -57,9 +79,12 @@ CameraMetaData::~CameraMetaData(void) {
 }
 
 Camera* CameraMetaData::getCamera(string make, string model, string mode) {
+
   string id = string(make).append(model).append(mode);
+
   if (cameras.end() == cameras.find(id))
     return NULL;
+
   return cameras[id];
 }
 
@@ -125,5 +150,31 @@ void CameraMetaData::disableCamera( string make, string model )
     }
   }
 }
+
+
+bool CameraMetaData::isCameraSupported( string make, string model )
+{
+  map<string, Camera*>::iterator i = cameras.begin();
+  for (; i != cameras.end(); ++i) {
+    Camera* cam = (*i).second;
+    if (0 == cam->make.compare(make) && 0 == cam->model.compare(model)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+Camera *CameraMetaData::getCameraSupported( string make, string model )
+{
+  map<string, Camera*>::iterator i = cameras.begin();
+  for (; i != cameras.end(); ++i) {
+    Camera* cam = (*i).second;
+    if (0 == cam->make.compare(make) && 0 == cam->model.compare(model)) {
+      return cam;
+    }
+  }
+  return 0;
+}
+
 
 } // namespace RawSpeed

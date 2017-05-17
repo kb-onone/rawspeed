@@ -2,6 +2,8 @@
 #include "DngDecoder.h"
 #include <iostream>
 
+#include <QDebug>
+
 /*
     RawSpeed - RAW file decoder.
 
@@ -60,7 +62,7 @@ RawImage DngDecoder::decodeRawInternal() {
     try {
       isSubsampled = (*i)->getEntry(NEWSUBFILETYPE)->getInt() & 1; // bit 0 is on if image is subsampled
     } catch (TiffParserException) {}
-    if ((compression != 7 && compression != 1 && compression != 0x884c) || isSubsampled) {  // Erase if subsampled, or not JPEG or uncompressed
+    if ((compression != 9 && compression != 7 && compression != 1 && compression != 0x884c) || isSubsampled) {  // Erase if subsampled, or not JPEG or uncompressed
       i = data.erase(i);
     } else {
       ++i;
@@ -88,7 +90,9 @@ RawImage DngDecoder::decodeRawInternal() {
   else
     ThrowRDE("DNG Decoder: Only 16 bit unsigned or float point data supported.");
 
-  mRaw->isCFA = (raw->getEntry(PHOTOMETRICINTERPRETATION)->getShort() == 32803);
+  int photometricInterpretation = raw->getEntry(PHOTOMETRICINTERPRETATION)->getShort();
+
+  mRaw->isCFA = (photometricInterpretation == 32803);
 
   if (mRaw->isCFA)
     _RPT0(0, "This is a CFA image\n");
@@ -115,9 +119,10 @@ RawImage DngDecoder::decodeRawInternal() {
     if (mRaw->isCFA) {
 
       // Check if layout is OK, if present
-      if (raw->hasEntry(CFALAYOUT))
+      if (raw->hasEntry(CFALAYOUT)) {
         if (raw->getEntry(CFALAYOUT)->getShort() != 1)
           ThrowRDE("DNG Decoder: Unsupported CFA Layout.");
+      }
 
       TiffEntry *cfadim = raw->getEntry(CFAREPEATPATTERNDIM);
       if (cfadim->count != 2)
@@ -179,10 +184,17 @@ RawImage DngDecoder::decodeRawInternal() {
 
         TiffEntry *offsets = raw->getEntry(STRIPOFFSETS);
         TiffEntry *counts = raw->getEntry(STRIPBYTECOUNTS);
-        uint32 yPerSlice = raw->getEntry(ROWSPERSTRIP)->getInt();
+
+
         uint32 width = raw->getEntry(IMAGEWIDTH)->getInt();
         uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
-          
+
+        uint32 yPerSlice;
+        if ( raw->hasEntry(ROWSPERSTRIP) )
+            yPerSlice = raw->getEntry(ROWSPERSTRIP)->getInt();
+        else
+            yPerSlice = height;
+
         if (counts->count != offsets->count) {
           ThrowRDE("DNG Decoder: Byte count number does not match strip size: count:%u, strips:%u ", counts->count, offsets->count);
         }
@@ -230,7 +242,7 @@ RawImage DngDecoder::decodeRawInternal() {
       } catch (TiffParserException) {
         ThrowRDE("DNG Decoder: Unsupported format, uncompressed with no strips.");
       }
-    } else if (compression == 7 || compression == 0x884c) {
+    } else if (compression == 9 || compression == 7 || compression == 0x884c) {
       try {
         // Let's try loading it as tiles instead
 
@@ -294,8 +306,14 @@ RawImage DngDecoder::decodeRawInternal() {
 
         slices.startDecoding();
 
-        if (mRaw->errors.size() >= nSlices)
+        if (mRaw->errors.size() >= nSlices) {
+
+//            for (int i = 0; i < mRaw->errors.size(); i++)
+//                printf("DNG DECODING ERROR %s\n", mRaw->errors[i]);
+
           ThrowRDE("DNG Decoding: Too many errors encountered. Giving up.\nFirst Error:%s", mRaw->errors[0]);
+
+        }
       } catch (TiffParserException e) {
         ThrowRDE("DNG Decoder: Unsupported format, tried strips and tiles:\n%s", e.what());
       }
@@ -538,8 +556,11 @@ bool DngDecoder::decodeMaskedAreas(TiffIFD* raw) {
   return !!mRaw->blackAreas.size();
 }
 
+
 bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
   iPoint2D blackdim(1,1);
+
+
   if (raw->hasEntry(BLACKLEVELREPEATDIM)) {
     TiffEntry *bleveldim = raw->getEntry(BLACKLEVELREPEATDIM);
     if (bleveldim->count != 2)
@@ -547,8 +568,10 @@ bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
     blackdim = iPoint2D(bleveldim->getInt(0), bleveldim->getInt(1));
   }
 
+
   if (blackdim.x == 0 || blackdim.y == 0)
     return FALSE;
+
 
   if (!raw->hasEntry(BLACKLEVEL))
     return TRUE;
@@ -574,8 +597,10 @@ bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
     }
   }
 
+
   // DNG Spec says we must add black in deltav and deltah
   if (raw->hasEntry(BLACKLEVELDELTAV)) {
+
     TiffEntry *blackleveldeltav = raw->getEntry(BLACKLEVELDELTAV);
     if ((int)blackleveldeltav->count < mRaw->dim.y)
       ThrowRDE("DNG: BLACKLEVELDELTAV array is too small");
@@ -588,6 +613,7 @@ bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
   } 
 
   if (raw->hasEntry(BLACKLEVELDELTAH)){
+
     TiffEntry *blackleveldeltah = raw->getEntry(BLACKLEVELDELTAH);
     if ((int)blackleveldeltah->count < mRaw->dim.x)
       ThrowRDE("DNG: BLACKLEVELDELTAH array is too small");
@@ -598,6 +624,10 @@ bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
     for (int i = 0; i < 4; i++)
       mRaw->blackLevelSeparate[i] += (int)(black_sum[i&1] / (float)mRaw->dim.x * 2.0f);
   }
+
+
+
+
   return TRUE;
 }
 
@@ -612,5 +642,9 @@ void DngDecoder::setBlack(TiffIFD* raw) {
 
   if (raw->hasEntry(BLACKLEVEL))
     decodeBlackLevels(raw);
+
+//  for (int i = 0; i < 4; i++)
+//      onrawDebug() << "BLACK LEVEL " << i << mRaw->blackLevelSeparate[i];
+
 }
 } // namespace RawSpeed

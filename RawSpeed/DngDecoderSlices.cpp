@@ -163,7 +163,7 @@ void DngDecoderSlices::decodeSlice(DngDecoderThread* t) {
     /* Lossy DNG */
   } else if (compression == 0x884c) {
     /* Each slice is a JPEG image */
-    struct jpeg_decompress_struct dinfo;
+ /*   struct jpeg_decompress_struct dinfo;
     struct jpeg_error_mgr jerr;
     while (!t->slices.empty()) {
       DngSliceElement e = t->slices.front();
@@ -214,6 +214,7 @@ void DngDecoderSlices::decodeSlice(DngDecoderThread* t) {
         _aligned_free(complete_buffer);
       jpeg_destroy_decompress(&dinfo);
     }
+    */
   }
   else
     mRaw->setError("DngDecoderSlices: Unknown compression");

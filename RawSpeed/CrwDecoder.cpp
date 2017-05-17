@@ -99,15 +99,48 @@ void CrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   string mode = "";
 
   // Fetch the white balance
+
+  bool gotWB = false;
+
   try{
     if(mRootIFD->hasEntryRecursive((CiffTag)0x0032)) {
       CiffEntry *wb = mRootIFD->getEntryRecursive((CiffTag)0x0032);
       if (wb->type == CIFF_BYTE && wb->count == 768) {
         // We're in a D30 file, values are RGGB
         // This will probably not get used anyway as a 0x102c tag should exist
-        mRaw->metadata.wbCoeffs[0] = (float) (1024.0 /wb->getByte(72));
-        mRaw->metadata.wbCoeffs[1] = (float) ((1024.0/wb->getByte(73))+(1024.0/wb->getByte(74)))/2.0f;
-        mRaw->metadata.wbCoeffs[2] = (float) (1024.0 /wb->getByte(75));
+//        mRaw->metadata.wbCoeffs[0] = (float) (1024.0 /wb->getByte(72));
+//        mRaw->metadata.wbCoeffs[1] = (float) ((1024.0/wb->getByte(73))+(1024.0/wb->getByte(74)))/2.0f;
+//        mRaw->metadata.wbCoeffs[2] = (float) (1024.0 /wb->getByte(75));
+
+
+          uint8_t r0 = wb->getByte(72);
+          uint8_t r1 = wb->getByte(73);
+
+          uint8_t g0 = wb->getByte(74);
+          uint8_t g1 = wb->getByte(75);
+
+          uint8_t g2 = wb->getByte(76);
+          uint8_t g3 = wb->getByte(77);
+
+          uint8_t b0 = wb->getByte(78);
+          uint8_t b1 = wb->getByte(79);
+
+          uint16_t r = ((r1 << 8) | r0);
+          uint16_t g = (((g1 << 8) | g0) + ((g3 << 8) | g2)) >> 1;
+          uint16_t b = ((b1 << 8) | b0);
+
+          uint16_t mx = max(r, max(g, b));
+
+          if ( r != 0 && b != 0 && g != 0 ) {
+              mRaw->metadata.wbCoeffs[0] = float(mx) / float(r);
+              mRaw->metadata.wbCoeffs[1] = float(mx) / float(g);
+              mRaw->metadata.wbCoeffs[2] = float(mx) / float(b);
+
+
+            if ( model.compare("Canon EOS D30") == 0 )
+                gotWB = true;
+         }
+
       } else if (wb->type == CIFF_BYTE && wb->count > 768) { // Other G series and S series cameras
         // correct offset for most cameras
         int offset = 120;
@@ -137,9 +170,11 @@ void CrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
         mRaw->metadata.wbCoeffs[3] = (float) entry->getShort(61);
       } else if (entry->type == CIFF_SHORT) {
         /* G2, S30, S40 */
-        mRaw->metadata.wbCoeffs[0] = (float) entry->getShort(51);
-        mRaw->metadata.wbCoeffs[1] = ((float) entry->getShort(50) + (float) entry->getShort(53))/ 2.0f;
-        mRaw->metadata.wbCoeffs[2] = (float) entry->getShort(52);
+        if ( ! gotWB ) {
+            mRaw->metadata.wbCoeffs[0] = (float) entry->getShort(51);
+            mRaw->metadata.wbCoeffs[1] = ((float) entry->getShort(50) + (float) entry->getShort(53))/ 2.0f;
+            mRaw->metadata.wbCoeffs[2] = (float) entry->getShort(52);
+        }
       }
     }
     if (mRootIFD->hasEntryRecursive(CIFF_SHOTINFO) && mRootIFD->hasEntryRecursive(CIFF_WHITEBALANCE)) {

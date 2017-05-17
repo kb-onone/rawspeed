@@ -193,7 +193,8 @@ void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D
         uint32 b = bits.getBits(bitPerPixel);
         dest[x] = b;
       }
-      bits.skipBits(skipBits);
+      if ( y+1 < h )
+        bits.skipBits(skipBits);
     }
   }
 }

@@ -117,7 +117,10 @@ void LJpegPlain::decodeScan() {
       decodeScanLeftGeneric();
       return;
     }
-    if (frame.cps == 2)
+
+    if ( frame.cps == 1 )
+      decodeScanLeft1Comps();
+    else if (frame.cps == 2)
       decodeScanLeft2Comps();
     else if (frame.cps == 3)
       decodeScanLeft3Comps();
@@ -542,6 +545,10 @@ void LJpegPlain::decodeScanLeft4_2_2() {
 
   uint32 cw = (frame.w - skipX);
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
+
+      if ( mCancelDecoder && *mCancelDecoder )
+          break;
+
     for (; x < cw ; x += 2) {
 
       if (0 == pixInSlice) { // Next slice
@@ -580,6 +587,98 @@ void LJpegPlain::decodeScanLeft4_2_2() {
     bits->checkPos();
   }
 }
+
+
+
+#undef COMPS
+#define COMPS 1
+void LJpegPlain::decodeScanLeft1Comps() {
+  _ASSERTE(slicesW.size() < 16);  // We only have 4 bits for slice number.
+  _ASSERTE(!(slicesW.size() > 1 && skipX)); // Check if this is a valid state
+
+  uchar8 *draw = mRaw->getData();
+  // First line
+  HuffmanTable *dctbl1 = &huff[frame.compInfo[0].dcTblNo];
+
+  //Prepare slices (for CR2)
+  uint32 slices = (uint32)slicesW.size() * (frame.h - skipY);
+  offset = new uint32[slices+1];
+
+  uint32 t_y = 0;
+  uint32 t_x = 0;
+  uint32 t_s = 0;
+  uint32 slice = 0;
+  uint32 cw = (frame.w - skipX);
+  for (slice = 0; slice < slices; slice++) {
+    offset[slice] = ((t_x + offX) * mRaw->getBpp() + ((offY + t_y) * mRaw->pitch)) | (t_s << 28);
+    _ASSERTE((offset[slice]&0x0fffffff) < mRaw->pitch*mRaw->dim.y);
+    t_y++;
+    if (t_y == (frame.h - skipY)) {
+      t_y = 0;
+      t_x += slicesW[t_s++];
+    }
+  }
+  // We check the final position. If bad slice sizes are given we risk writing outside the image
+  if ((offset[slices-1]&0x0fffffff) >= mRaw->pitch*mRaw->dim.y) {
+    ThrowRDE("LJpegPlain::decodeScanLeft: Last slice out of bounds");
+  }
+  offset[slices] = offset[slices-1];        // Extra offset to avoid branch in loop.
+
+  slice_width = new int[slices];
+
+  // This is divided by comps, since comps pixels are processed at the time
+  for (uint32 i = 0 ; i <  slicesW.size(); i++)
+    slice_width[i] = slicesW[i] / COMPS;
+
+  if (skipX)
+    slice_width[slicesW.size()-1] -= skipX;
+
+  // First pixels are obviously not predicted
+  int p1;
+  int p2;
+  ushort16 *dest = (ushort16*) & draw[offset[0] & 0x0fffffff];
+  ushort16 *predict = dest;
+  *dest++ = p1 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl1);
+
+  slice = 1;    // Always points to next slice
+  uint32 pixInSlice = slice_width[0] - 1;  // Skip first pixel
+
+  uint32 x = 1;                            // Skip first pixels on first line.
+  for (uint32 y = 0;y < (frame.h - skipY);y++) {
+
+      if ( mCancelDecoder && *mCancelDecoder )
+          break;
+
+    for (; x < cw ; x++) {
+      int diff = HuffDecode(dctbl1);
+      p1 += diff;
+      *dest++ = (ushort16)p1;
+  //    _ASSERTE(p1 >= 0 && p1 < 65536);
+
+      if (0 == --pixInSlice) { // Next slice
+        if (slice > slices)
+          ThrowRDE("LJpegPlain::decodeScanLeft: Ran out of slices");
+        uint32 o = offset[slice++];
+        dest = (ushort16*) & draw[o&0x0fffffff];  // Adjust destination for next pixel
+        if((o&0x0fffffff) > mRaw->pitch*mRaw->dim.y)
+          ThrowRDE("LJpegPlain::decodeScanLeft: Offset out of bounds");
+        pixInSlice = slice_width[o>>28];
+      }
+    }
+
+    if (skipX) {
+      for (uint32 i = 0; i < skipX; i++) {
+        HuffDecode(dctbl1);
+      }
+    }
+
+    p1 = predict[0];  // Predictors for next row
+    predict = dest;  // Adjust destination for next prediction
+    x = 0;
+    bits->checkPos();
+  }
+}
+
 
 #undef COMPS
 #define COMPS 2
@@ -638,6 +737,10 @@ void LJpegPlain::decodeScanLeft2Comps() {
 
   uint32 x = 1;                            // Skip first pixels on first line.
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
+
+      if ( mCancelDecoder && *mCancelDecoder )
+          break;
+
     for (; x < cw ; x++) {
       int diff = HuffDecode(dctbl1);
       p1 += diff;
@@ -735,6 +838,10 @@ void LJpegPlain::decodeScanLeft3Comps() {
   uint32 x = 1;                            // Skip first pixels on first line.
 
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
+
+    if ( mCancelDecoder && *mCancelDecoder )
+      break;
+
     for (; x < cw ; x++) {
       p1 += HuffDecode(dctbl1);
       *dest++ = (ushort16)p1;
@@ -846,7 +953,8 @@ void LJpegPlain::decodeScanLeft4Comps() {
     skipY = frame.h >> 1;
 
   for (uint32 y = 0;y < (frame.h - skipY);y++) {
-	if ( mCancelDecoder && *mCancelDecoder )
+
+      if ( mCancelDecoder && *mCancelDecoder )
         break;
 	  
     for (; x < cw ; x++) {

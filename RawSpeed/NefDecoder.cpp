@@ -223,9 +223,20 @@ void NefDecoder::DecodeUncompressed() {
   }
 
   bool bitorder = true;
+
+
   map<string,string>::iterator msb_hint = hints.find("msb_override");
   if (msb_hint != hints.end())
     bitorder = (0 == (msb_hint->second).compare("true"));
+
+  bool checkedian = false;
+
+  map<string,string>::iterator edian_hint = hints.find("endianness-check");
+  if (edian_hint != hints.end())
+    checkedian = true;
+
+  if ( checkedian && raw->endian == big )
+      bitorder = true;
 
   offY = 0;
   for (uint32 i = 0; i < slices.size(); i++) {

@@ -36,10 +36,12 @@ TiffEntryBE::TiffEntryBE(FileMap* f, uint32 offset, uint32 up_offset) {
   type = (TiffDataType) get2BE(temp_data, 2);
   count = get4BE(temp_data,4);
 
+
   if (type > 13)
     ThrowTPE("Error reading TIFF structure. Unknown Type 0x%x encountered.", type);
 
   bytesize = (uint64)count << datashifts[type];
+
   if (bytesize > UINT32_MAX)
     ThrowTPE("TIFF entry is supposedly %llu bytes", bytesize);
 
@@ -51,6 +53,7 @@ TiffEntryBE::TiffEntryBE(FileMap* f, uint32 offset, uint32 up_offset) {
     data_offset = get4BE(f->getData(offset+8, 4),0);
     data = f->getDataWrt(data_offset, bytesize);
   }
+
 #ifdef _DEBUG
   debug_intVal = 0xC0CAC01A;
   debug_floatVal = sqrtf(-1);
@@ -60,6 +63,7 @@ TiffEntryBE::TiffEntryBE(FileMap* f, uint32 offset, uint32 up_offset) {
   if (type == TIFF_FLOAT || type == TIFF_DOUBLE)
     debug_floatVal = getFloat();
 #endif
+
 }
 
 TiffEntryBE::TiffEntryBE( TiffTag tag, TiffDataType type, uint32 count, const uchar8* data /*= NULL*/ )
@@ -86,8 +90,10 @@ ushort16 TiffEntryBE::getShort(uint32 num) {
   if (type != TIFF_SHORT && type != TIFF_UNDEFINED)
     ThrowTPE("TIFF, getShort: Wrong type %u encountered. Expected Short or Undefined on 0x%x", type, tag);
 
-  if (num*2+1 >= bytesize)
+  if ( (bytesize > 0) && num*2+1 >= bytesize) {
+//    if ( num*2+1 >= bytesize) {
     ThrowTPE("TIFF, getShort: Trying to read out of bounds");
+  }
 
   return get2BE(data, num*2);
 }

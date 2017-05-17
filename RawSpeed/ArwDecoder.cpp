@@ -137,19 +137,22 @@ RawImage ArwDecoder::decodeRawInternal() {
   uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
   uint32 bitPerPixel = raw->getEntry(BITSPERSAMPLE)->getInt();
 
+  uint32 orgBPP = bitPerPixel;
+
   // Sony E-550 marks compressed 8bpp ARW with 12 bit per pixel
   // this makes the compression detect it as a ARW v1.
   // This camera has however another MAKER entry, so we MAY be able
   // to detect it this way in the future.
   data = mRootIFD->getIFDsWithTag(MAKE);
+
   if (data.size() > 1) {
     for (uint32 i = 0; i < data.size(); i++) {
       string make = data[i]->getEntry(MAKE)->getString();
-      /* Check for maker "SONY" without spaces */
       if (!make.compare("SONY"))
         bitPerPixel = 8;
     }
   }
+
 
   bool arw1 = counts->getInt() * 8 != width * height * bitPerPixel;
   if (arw1)
@@ -229,23 +232,25 @@ void ArwDecoder::DecodeARW(ByteStream &input, uint32 w, uint32 h) {
   uint32 pitch = mRaw->pitch / sizeof(ushort16);
   int sum = 0;
   for (uint32 x = w; x--;)
-      if ( *mCancelDecoder )
-          break;
-    for (uint32 y = 0; y < h + 1; y += 2) {
-      bits.checkPos();
-      bits.fill();
-      if (y == h) y = 1;
-      uint32 len = 4 - bits.getBitsNoFill(2);
-      if (len == 3 && bits.getBitNoFill()) len = 0;
-      if (len == 4)
-        while (len < 17 && !bits.getBitNoFill()) len++;
-      int diff = bits.getBits(len);
-      if (len && (diff & (1 << (len - 1))) == 0)
-        diff -= (1 << len) - 1;
-      sum += diff;
-      _ASSERTE(!(sum >> 12));
-      if (y < h) dest[x+y*pitch] = sum;
-    }
+  {
+      if (mCancelDecoder && *mCancelDecoder)
+		  break;
+	  for (uint32 y = 0; y < h + 1; y += 2) {
+		  bits.checkPos();
+		  bits.fill();
+		  if (y == h) y = 1;
+		  uint32 len = 4 - bits.getBitsNoFill(2);
+		  if (len == 3 && bits.getBitNoFill()) len = 0;
+		  if (len == 4)
+			  while (len < 17 && !bits.getBitNoFill()) len++;
+		  int diff = bits.getBits(len);
+		  if (len && (diff & (1 << (len - 1))) == 0)
+			  diff -= (1 << len) - 1;
+		  sum += diff;
+		  _ASSERTE(!(sum >> 12));
+		  if (y < h) dest[x + y*pitch] = sum;
+	  }
+  }
 }
 
 void ArwDecoder::DecodeARW2(ByteStream &input, uint32 w, uint32 h, uint32 bpp) {

@@ -147,7 +147,7 @@ void Rw2Decoder::decodeThreaded(RawDecoderThread * t) {
   vector<uint32> zero_pos;
   for (y = t->start_y; y < t->end_y; y++) {
 	  
-    if ( *mCancelDecoder )
+    if ( mCancelDecoder && *mCancelDecoder )
         break;
 	  
     ushort16* dest = (ushort16*)mRaw->getData(0, y);

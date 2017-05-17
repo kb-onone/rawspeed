@@ -146,7 +146,8 @@ RawDecoder* TiffParser::getDecoder() {
         mRootIFD = NULL;
         return new NefDecoder(root, mInput);
       }
-      if (!make.compare("OLYMPUS IMAGING CORP.") ||
+      if (!make.compare("OLYMPUS CORP.") ||
+          !make.compare("OLYMPUS IMAGING CORP.") ||
           !make.compare("OLYMPUS CORPORATION") ||
           !make.compare("OLYMPUS OPTICAL CO.,LTD") ) {
         mRootIFD = NULL;

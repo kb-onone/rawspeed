@@ -109,6 +109,8 @@ TiffIFD::TiffIFD(FileMap* f, uint32 offset, uint32 _depth) {
 
         break;
       default:
+//        printf("TAG %x\n", t->tag); fflush(stdout);
+
         mEntry[t->tag] = t;
     }
   }

@@ -149,13 +149,7 @@ inline int lmax(int p0, int p1) {
 
 inline uint32 getThreadCount()
 {
-#ifdef NO_PTHREAD
-  return 1;
-#elif WIN32
-  return pthread_num_processors_np();
-#else
-  return rawspeed_get_number_of_processor_cores();
-#endif
+	return rawspeed_get_number_of_processor_cores();
 }
 
 #ifdef NO_PTHREAD
@@ -202,7 +196,7 @@ inline Endianness getHostEndianness() {
 #define PLATFORM_BSWAP32(A) _byteswap_ulong(A)
 // See http://tinyurl.com/hqfuznc
 #if _MSC_VER >= 1900 
-extern "C" { FILE __iob_func[3] = { *stdin,*stdout,*stderr }; }
+//extern "C" { FILE __iob_func[3] = { *stdin,*stdout,*stderr }; }
 #endif
 #endif
 
