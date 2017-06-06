@@ -48,6 +48,8 @@ enum _xt_lines
     _ltotal
 };
 
+
+
 struct xtrans_params
   {
       char        *q_table;        /* quantization table */
@@ -80,6 +82,7 @@ struct InternalCompressedFuji {
     unsigned fuji_total_blocks;
     unsigned fuji_block_width;
     unsigned fuji_bits;
+    unsigned fuji_raw_type;
     int data_offset;
     ByteStream *input;
 };
@@ -110,8 +113,12 @@ protected:
   void init_xtrans(struct xtrans_params* info);
   void xtrans_decode_strip(const struct xtrans_params* info_common, int cur_block, INT64 raw_offset, unsigned dsize);
   void xtrans_decode_block(struct xtrans_block* info, const struct xtrans_params *params, int cur_line);
+  void fuji_bayer_decode_block(struct xtrans_block *info, const struct xtrans_params *params, int cur_line);
+
   void init_xtrans_block(struct xtrans_block* info, const struct xtrans_params *params, INT64 raw_offset, unsigned dsize);
   void copy_line_to_xtrans(struct xtrans_block* info, int cur_line, int cur_block, int cur_block_width);
+  void copy_line_to_bayer(struct xtrans_block *info, int cur_line, int cur_block, int cur_block_width);
+
   string getMode();
 
 };
