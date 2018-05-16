@@ -308,10 +308,13 @@ RawImage DngDecoder::decodeRawInternal() {
 
         if (mRaw->errors.size() >= nSlices) {
 
-//            for (int i = 0; i < mRaw->errors.size(); i++)
-//                printf("DNG DECODING ERROR %s\n", mRaw->errors[i]);
+            for (int i = 0; i < mRaw->errors.size(); i++)
+                printf("DNG DECODING ERROR %s\n", mRaw->errors[i]);
 
-          ThrowRDE("DNG Decoding: Too many errors encountered. Giving up.\nFirst Error:%s", mRaw->errors[0]);
+            if ( mRaw->errors.size() == 1 && strcmp(mRaw->errors[0], "No marker found inside rest of buffer") == 0 )
+                ;
+            else
+              ThrowRDE("DNG Decoding: Too many errors encountered. Giving up.\nFirst Error:%s", mRaw->errors[0]);
 
         }
       } catch (TiffParserException e) {
@@ -429,7 +432,7 @@ RawImage DngDecoder::decodeRawInternal() {
       for (uint32 x = 0; x < cw; x++) {
         avg += (float)pixels[x];
       }
-      printf("Average:%f\n", avg/(float)cw);    
+//      printf("Average:%f\n", avg/(float)cw);
     }
   }
 
@@ -484,8 +487,6 @@ void DngDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
     Camera *cam = meta->getCamera(make, model, "dng");
     if (!cam) //Also look for non-DNG cameras in case it's a converted file
       cam = meta->getCamera(make, model, "");
-    if (!cam) // Worst case scenario, look for any such camera.
-      cam = meta->getCamera(make, model);
     if (cam) {
       mRaw->metadata.canonical_make = cam->canonical_make;
       mRaw->metadata.canonical_model = cam->canonical_model;

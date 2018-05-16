@@ -298,6 +298,9 @@ void Camera::parseAlias( xml_node &cur )
   if (isTag(cur.name(), "Alias")) {
     aliases.push_back(string(cur.first_child().value()));
     pugi::xml_attribute key = cur.attribute("id");
+
+//    printf("Alias %s\n", key.as_string());
+
     if (key)
       canonical_aliases.push_back(string(key.as_string()));
     else

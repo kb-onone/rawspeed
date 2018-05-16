@@ -259,22 +259,12 @@ void LJpegPlain::decodeScanLeftGeneric() {
   x = maxSuperH;
   pixInSlice -= maxSuperH;
 
-
   uint32 cw = (frame.w - skipX);
-  uint32 ch = (frame.h - skipY);
-
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
-
-  for (uint32 y = 0;y < ch;y += maxSuperV) {
+  for (uint32 y = 0;y < (frame.h - skipY);y += maxSuperV) {
 	  
     if ( mCancelDecoder && *mCancelDecoder )
         break;
-	
+	  
     for (; x < cw ; x += maxSuperH) {
 
       if (0 == pixInSlice) { // Next slice
@@ -422,20 +412,11 @@ void LJpegPlain::decodeScanLeft4_2_0() {
   pixInSlice -= 2;
 
   uint32 cw = (frame.w - skipX);
-  uint32 ch = (frame.h - skipY);
-
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
-
-  for (uint32 y = 0;y < ch;y += 2) {
-	  
+  for (uint32 y = 0;y < (frame.h - skipY);y += 2) {
+	
 	if ( mCancelDecoder && *mCancelDecoder )
         break;
-	
+	  
     for (; x < cw ; x += 2) {
 
       if (0 == pixInSlice) { // Next slice
@@ -563,20 +544,11 @@ void LJpegPlain::decodeScanLeft4_2_2() {
   pixInSlice -= 2;
 
   uint32 cw = (frame.w - skipX);
-  uint32 ch = (frame.h - skipY);
+  for (uint32 y = 0;y < (frame.h - skipY);y++) {
 
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
+      if ( mCancelDecoder && *mCancelDecoder )
+          break;
 
-  for (uint32 y = 0;y < ch;y++) {
-	  
-	if ( mCancelDecoder && *mCancelDecoder )
-		break;
-	  
     for (; x < cw ; x += 2) {
 
       if (0 == pixInSlice) { // Next slice
@@ -764,20 +736,11 @@ void LJpegPlain::decodeScanLeft2Comps() {
   uint32 pixInSlice = slice_width[0] - 1;  // Skip first pixel
 
   uint32 x = 1;                            // Skip first pixels on first line.
-  uint32 ch = (frame.h - skipY);
+  for (uint32 y = 0;y < (frame.h - skipY);y++) {
 
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
-
-  for (uint32 y = 0;y < ch;y++) {
-	  
       if ( mCancelDecoder && *mCancelDecoder )
           break;
-	  
+
     for (; x < cw ; x++) {
       int diff = HuffDecode(dctbl1);
       p1 += diff;
@@ -873,20 +836,12 @@ void LJpegPlain::decodeScanLeft3Comps() {
 
   uint32 cw = (frame.w - skipX);
   uint32 x = 1;                            // Skip first pixels on first line.
-  uint32 ch = (frame.h - skipY);
 
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
+  for (uint32 y = 0;y < (frame.h - skipY);y++) {
 
-  for (uint32 y = 0;y < ch;y++) {
-	  
     if ( mCancelDecoder && *mCancelDecoder )
       break;
-  
+
     for (; x < cw ; x++) {
       p1 += HuffDecode(dctbl1);
       *dest++ = (ushort16)p1;
@@ -954,6 +909,7 @@ void LJpegPlain::decodeScanLeft4Comps() {
   uint32 slice = 0;
   for (slice = 0; slice < slices; slice++) {
     offset[slice] = ((t_x + offX) * mRaw->getBpp() + ((offY + t_y) * mRaw->pitch)) | (t_s << 28);
+
     _ASSERTE((offset[slice]&0x0fffffff) < mRaw->pitch*mRaw->dim.y);
     t_y++;
     if (t_y == (frame.h - skipY)) {
@@ -989,7 +945,7 @@ void LJpegPlain::decodeScanLeft4Comps() {
   *dest++ = p4 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl4);
 
   slice = 1;
-  uint32 pixInSlice = slice_width[0] - 1;
+  uint32 pixInSlice = (slice_width[0] - 1);
 
   uint32 cw = (frame.w - skipX);
   uint32 x = 1;                            // Skip first pixels on first line.
@@ -997,20 +953,12 @@ void LJpegPlain::decodeScanLeft4Comps() {
   if (mCanonDoubleHeight)
     skipY = frame.h >> 1;
 
-  uint32 ch = (frame.h - skipY);
 
-  // Fix for Canon 80D mraw format.
-  // In that format, `frame` is 4032x3402, while `mRaw` is 4536x3024.
-  // Consequently, the slices in `frame` wrap around (this is taken care of by
-  // `offset`) and must be decoded fully (without skipY) to fill the image
-  if (mWrappedCr2Slices)
-    ch = frame.h;
+  for (uint32 y = 0; y < (frame.h - skipY); y++) {
 
-  for (uint32 y = 0;y < ch;y++) {
+      if ( mCancelDecoder && *mCancelDecoder )
+        break;
 	  
-    if ( mCancelDecoder && *mCancelDecoder )
-		break;
-	
     for (; x < cw ; x++) {
       p1 += HuffDecode(dctbl1);
       *dest++ = (ushort16)p1;
@@ -1024,11 +972,13 @@ void LJpegPlain::decodeScanLeft4Comps() {
       p4 += HuffDecode(dctbl4);
       *dest++ = (ushort16)p4;
 
+
       if (0 == --pixInSlice) { // Next slice
         if (slice > slices)
           ThrowRDE("LJpegPlain::decodeScanLeft: Ran out of slices");
         uint32 o = offset[slice++];
-        dest = (ushort16*) & draw[o&0x0fffffff];  // Adjust destination for next pixel
+        if ( mUseOffsets )
+            dest = (ushort16*) & draw[o&0x0fffffff];  // Adjust destination for next pixel
         if((o&0x0fffffff) > mRaw->pitch*mRaw->dim.y)
           ThrowRDE("LJpegPlain::decodeScanLeft: Offset out of bounds");
         pixInSlice = slice_width[o>>28];
@@ -1050,6 +1000,7 @@ void LJpegPlain::decodeScanLeft4Comps() {
     predict = dest;  // Adjust destination for next prediction
     x = 0;
   }
+
 }
 
 } // namespace RawSpeed

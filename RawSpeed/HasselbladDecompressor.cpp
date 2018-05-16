@@ -1,3 +1,5 @@
+
+
 #include "StdAfx.h"
 #include "HasselbladDecompressor.h"
 #include "ByteStreamSwap.h"
@@ -179,3 +181,9 @@ int HasselbladDecompressor::HuffGetLength() {
 
 
 } // namespace RawSpeed
+
+
+
+
+
+

@@ -29,7 +29,7 @@ namespace RawSpeed {
 
 Cr2Decoder::Cr2Decoder(TiffIFD *rootIFD, FileMap* file) :
     RawDecoder(file), mRootIFD(rootIFD) {
-  decoderVersion = 7;
+  decoderVersion = 6;
 }
 
 Cr2Decoder::~Cr2Decoder(void) {
@@ -75,17 +75,15 @@ RawImage Cr2Decoder::decodeRawInternal() {
     }
 
     mRaw->createData();
+    LJpegPlain l(mFile, mRaw);
 	
-    LJpegPlain *l = new LJpegPlain(mFile, mRaw);
-    l->mCancelDecoder = mCancelDecoder;
+    l.mCancelDecoder = mCancelDecoder;
 	
     try {
-      l->startDecoder(off, mFile->getSize()-off, 0, 0);
+      l.startDecoder(off, mFile->getSize()-off, 0, 0);
     } catch (IOException& e) {
       mRaw->setError(e.what());
     }
-
-    delete l;
 
     if(hints.find("double_line_ljpeg") != hints.end()) {
       // We now have a double width half height image we need to convert to the
@@ -149,9 +147,8 @@ RawImage Cr2Decoder::decodeRawInternal() {
       slice.offset = offsets[0].getInt();
       slice.count = counts[0].getInt();
       SOFInfo sof;
-      LJpegPlain *l = new LJpegPlain(mFile, mRaw);
-      l->getSOF(&sof, slice.offset, slice.count);
-      delete l;
+      LJpegPlain l(mFile, mRaw);
+      l.getSOF(&sof, slice.offset, slice.count);
       slice.w = sof.w * sof.cps;
       slice.h = sof.h;
       if (sof.cps == 4 && slice.w > slice.h * 4) {
@@ -174,6 +171,17 @@ RawImage Cr2Decoder::decodeRawInternal() {
   if (msb_hint != hints.end())
     doubleHeight = (0 == (msb_hint->second).compare("true"));
 
+
+  bool useOffsets = true;
+
+  {
+      // Override with canon_double_height if set.
+      map<string,string>::iterator msb_hint = hints.find("canon_layout_tweak1");
+      if (msb_hint != hints.end())
+            useOffsets = false;
+  }
+
+
   if (slices.empty()) {
     ThrowRDE("CR2 Decoder: No Slices found.");
   }
@@ -182,7 +190,6 @@ RawImage Cr2Decoder::decodeRawInternal() {
   // Fix for Canon 6D mRaw, which has flipped width & height for some part of the image
   // In that case, we swap width and height, since this is the correct dimension
   bool flipDims = false;
-  bool wrappedCr2Slices = false;
   if (raw->hasEntry((TiffTag)0xc6c5)) {
     ushort16 ss = raw->getEntry((TiffTag)0xc6c5)->getInt();
     // sRaw
@@ -190,20 +197,6 @@ RawImage Cr2Decoder::decodeRawInternal() {
       mRaw->dim.x /= 3;
       mRaw->setCpp(3);
       mRaw->isCFA = false;
-
-      // Fix for Canon 80D mraw format.
-      // In that format, the frame (as read by getSOF()) is 4032x3402, while the
-      // real image should be 4536x3024 (where the full vertical slices in
-      // the frame "wrap around" the image.
-      if (hints.find("wrapped_cr2_slices") != hints.end() && raw->hasEntry(IMAGEWIDTH) && raw->hasEntry(IMAGELENGTH)) {
-        wrappedCr2Slices = true;
-        int w = raw->getEntry(IMAGEWIDTH)->getInt();
-        int h = raw->getEntry(IMAGELENGTH)->getInt();
-        if (w * h != mRaw->dim.x * mRaw->dim.y) {
-          ThrowRDE("CR2 Decoder: Wrapped slices don't match image size");
-        }
-        mRaw->dim = iPoint2D(w, h);
-      }
     }
     flipDims = mRaw->dim.x < mRaw->dim.y;
     if (flipDims) {
@@ -233,14 +226,14 @@ RawImage Cr2Decoder::decodeRawInternal() {
   for (uint32 i = 0; i < slices.size(); i++) {
     Cr2Slice slice = slices[i];
     try {
-      LJpegPlain *l = new LJpegPlain(mFile, mRaw);
-      l->addSlices(s_width);
-      l->mUseBigtable = true;
-      l->mCanonFlipDim = flipDims;
-      l->mCanonDoubleHeight = doubleHeight;
-      l->mWrappedCr2Slices = wrappedCr2Slices;
-      l->startDecoder(slice.offset, slice.count, 0, offY);
-      delete l;
+      LJpegPlain l(mFile, mRaw);
+      l.addSlices(s_width);
+      l.mUseBigtable = true;
+      l.mCanonFlipDim = flipDims;
+      l.mCanonDoubleHeight = doubleHeight;
+      l.mUseOffsets = useOffsets;
+      l.mCancelDecoder = mCancelDecoder;
+      l.startDecoder(slice.offset, slice.count, 0, offY);
     } catch (RawDecoderException &e) {
       if (i == 0)
         throw;
@@ -280,7 +273,11 @@ void Cr2Decoder::checkSupportInternal(CameraMetaData *meta) {
       }
     }
   }
-  this->checkCameraSupported(meta, make, model, "");
+
+//  if ( model.substr(0, make.length()) == make )
+//    this->checkCameraSupported(meta, "", model, "");
+//  else
+    this->checkCameraSupported(meta, make, model, "");
 }
 
 void Cr2Decoder::decodeMetaDataInternal(CameraMetaData *meta) {

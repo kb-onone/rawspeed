@@ -57,6 +57,13 @@ typedef char* LPCWSTR;
 #endif
 #endif // __unix__
 
+#ifndef TRUE
+#define TRUE 1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+
 #ifndef UINT32_MAX
 #define UINT32_MAX 0xffffffff
 #endif

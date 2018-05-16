@@ -33,13 +33,12 @@ TiffEntryBE::TiffEntryBE(FileMap* f, uint32 offset, uint32 up_offset) {
 
   const uchar8 *temp_data = f->getData(offset, 8);
   tag = (TiffTag) get2BE(temp_data, 0);
-  const ushort16 numType = (TiffDataType) get2BE(temp_data, 2);
+  type = (TiffDataType) get2BE(temp_data, 2);
   count = get4BE(temp_data,4);
 
-  if (numType > 13)
-    ThrowTPE("Error reading TIFF structure. Unknown Type 0x%x encountered.", numType);
 
-  type = (TiffDataType) numType;
+  if (type > 13)
+    ThrowTPE("Error reading TIFF structure. Unknown Type 0x%x encountered.", type);
 
   bytesize = (uint64)count << datashifts[type];
 

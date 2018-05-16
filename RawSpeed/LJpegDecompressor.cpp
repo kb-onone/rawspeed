@@ -93,6 +93,7 @@ LJpegDecompressor::LJpegDecompressor(FileMap* file, RawImage img):
   mUseBigtable = false;
   mCanonFlipDim = false;
   mCanonDoubleHeight = false;
+  mUseOffsets = true;
 }
 
 LJpegDecompressor::~LJpegDecompressor(void) {

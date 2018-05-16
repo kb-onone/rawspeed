@@ -78,6 +78,7 @@ RawImage ArwDecoder::decodeRawInternal() {
       uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
       uint32 len = width*height*2;
 
+
       // Constants taken from dcraw
       uint32 off = 862144;
       uint32 key_off = 200896;
@@ -133,8 +134,8 @@ RawImage ArwDecoder::decodeRawInternal() {
   if (counts->count != offsets->count) {
     ThrowRDE("ARW Decoder: Byte count number does not match strip size: count:%u, strips:%u ", counts->count, offsets->count);
   }
-  uint32 width = raw->getEntry(IMAGEWIDTH)->getInt();
-  uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
+   uint32 width = raw->getEntry(IMAGEWIDTH)->getInt();
+   uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
   uint32 bitPerPixel = raw->getEntry(BITSPERSAMPLE)->getInt();
 
   uint32 orgBPP = bitPerPixel;
@@ -161,7 +162,7 @@ RawImage ArwDecoder::decodeRawInternal() {
   mRaw->dim = iPoint2D(width, height);
   mRaw->createData();
 
-  ushort16 *curve = new ushort16[0x4001];
+  ushort16 curve[0x4001];
   TiffEntry *c = raw->getEntry(SONY_CURVE);
   uint32 sony_curve[] = { 0, 0, 0, 0, 0, 4095 };
 
@@ -205,8 +206,6 @@ RawImage ArwDecoder::decodeRawInternal() {
   } else {
     mRaw->setTable(NULL);
   }
-
-  delete[] curve;
 
   return mRaw;
 }

@@ -1,6 +1,5 @@
 #include "StdAfx.h"
 #include "CrwDecoder.h"
-#include <cmath>
 
 /*
     RawSpeed - RAW file decoder.
@@ -86,23 +85,6 @@ void CrwDecoder::checkSupportInternal(CameraMetaData *meta) {
   this->checkCameraSupported(meta, make, model, "");
 }
 
-// based on exiftool's Image::ExifTool::Canon::CanonEv
-static float canonEv(const long in) {
-  // remove sign
-  long val = abs(in);
-  // remove fraction
-  float frac = static_cast<float>(val & 0x1f);
-  val -= long(frac);
-  // convert 1/3 (0x0c) and 2/3 (0x14) codes
-  if (frac == 0x0c) {
-    frac = 32.0f / 3;
-  }
-  else if (frac == 0x14) {
-    frac = 64.0f / 3;
-  }
-  return copysignf((val + frac) / 32.0f, in);
-}
-
 void CrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   int iso = 0;
   mRaw->cfa.setCFA(iPoint2D(2,2), CFA_RED, CFA_GREEN, CFA_GREEN2, CFA_BLUE);
@@ -115,15 +97,6 @@ void CrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   string make = makemodel[0];
   string model = makemodel[1];
   string mode = "";
-
-  if (mRootIFD->hasEntryRecursive(CIFF_SHOTINFO)) {
-    CiffEntry *shot_info = mRootIFD->getEntryRecursive(CIFF_SHOTINFO);
-    if (shot_info->type == CIFF_SHORT && shot_info->count >= 2) {
-      // os << exp(canonEv(value.toLong()) * log(2.0)) * 100.0 / 32.0;
-      ushort16 iso_index = shot_info->getShort(2);
-      iso = expf(canonEv((long)iso_index) * logf(2.0)) * 100.0f / 32.0f;
-    }
-  }
 
   // Fetch the white balance
 
@@ -216,7 +189,7 @@ void CrwDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
       mRaw->metadata.wbCoeffs[2] = wb_data->getShort(wb_offset + 3);
     }
   } catch (const std::exception& e) {
-    fprintf(stderr, "Got exception: %s\n", e.what());
+//    fprintf(stderr, "Got exception: %s\n", e.what());
     mRaw->setError(e.what());
     // We caught an exception reading WB, just ignore it
   }

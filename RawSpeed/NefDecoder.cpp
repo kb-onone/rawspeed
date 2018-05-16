@@ -108,18 +108,17 @@ RawImage NefDecoder::decodeRawInternal() {
   }
 
   try {
-    NikonDecompressor* decompressor = new NikonDecompressor(mFile, mRaw);
-    decompressor->uncorrectedRawValues = uncorrectedRawValues;
+    NikonDecompressor decompressor(mFile, mRaw);
+    decompressor.uncorrectedRawValues = uncorrectedRawValues;
     ByteStream* metastream;
     if (getHostEndianness() == data[0]->endian)
       metastream = new ByteStream(meta->getData(), meta->count);
     else
       metastream = new ByteStreamSwap(meta->getData(), meta->count);
 
-    decompressor->DecompressNikon(metastream, width, height, bitPerPixel, offsets->getInt(), counts->getInt());
+    decompressor.DecompressNikon(metastream, width, height, bitPerPixel, offsets->getInt(), counts->getInt());
 
     delete metastream;
-    delete decompressor;
   } catch (IOException &e) {
     mRaw->setError(e.what());
     // Let's ignore it, it may have delivered somewhat useful data.
@@ -479,14 +478,18 @@ void NefDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   0xc6,0x67,0x4a,0xf5,0xa5,0x12,0x65,0x7e,0xb0,0xdf,0xaf,0x4e,0xb3,0x61,0x7f,0x2f};
 
   vector<TiffIFD*> note = mRootIFD->getIFDsWithTag((TiffTag)12);
-  if (!note.empty()) {
+  if ( ! note.empty() ) {
     TiffEntry *wb = note[0]->getEntry((TiffTag)12);
+
     if (wb->count == 4) {
-      mRaw->metadata.wbCoeffs[0] = wb->getFloat(0);
-      mRaw->metadata.wbCoeffs[1] = wb->getFloat(2);
-      mRaw->metadata.wbCoeffs[2] = wb->getFloat(1);
+
+        mRaw->metadata.wbCoeffs[0] = wb->getFloat(0); // wb->getFloat(0);
+      mRaw->metadata.wbCoeffs[1] = wb->getFloat(2); // wb->getFloat(2);
+      mRaw->metadata.wbCoeffs[2] = wb->getFloat(1); // wb->getFloat(1);
+
       if (mRaw->metadata.wbCoeffs[1] == 0.0f)
         mRaw->metadata.wbCoeffs[1] = 1.0f;
+
     }
   } else if (mRootIFD->hasEntryRecursive((TiffTag)0x0097)) {
     TiffEntry *wb = mRootIFD->getEntryRecursive((TiffTag)0x0097);
@@ -584,7 +587,7 @@ void NefDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
 
   if (white != 65536)
     mRaw->whitePoint = white;
-  if (black != -1)
+  if (black >= 0 && hints.find(string("nikon_override_auto_black")) == hints.end())
     mRaw->blackLevel = black;
 }
 
