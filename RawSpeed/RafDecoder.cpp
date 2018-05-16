@@ -405,7 +405,7 @@ void RafDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   if (mRootIFD->hasEntryRecursive(FUJI_RGGBLEVELSBLACK))
   {
     TiffEntry *sep_black = mRootIFD->getEntryRecursive(FUJI_RGGBLEVELSBLACK);
-    if (sep_black->count == 4)
+    if (sep_black->count >= 4)
     {
       for(int k=0;k<4;k++)
         mRaw->blackLevelSeparate[k] = sep_black->getInt(k);
@@ -1503,7 +1503,7 @@ bool RafDecoder::parse_xtrans_header(ByteStream *input)
         || h_total_lines == 0
         || h_total_lines != h_raw_height / 6
         || (h_raw_bits != 12 && h_raw_bits != 14)
-        || h_raw_type != 16 && h_raw_type != 0) {
+        || (h_raw_type != 16 && h_raw_type != 0)) {
 
         return false;
     }

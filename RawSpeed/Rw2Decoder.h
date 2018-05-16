@@ -31,12 +31,14 @@
 namespace RawSpeed {
 
 class PanaBitpump {
+    int c;
   public:
   PanaBitpump(ByteStream* input);
   virtual ~PanaBitpump();
   ByteStream* input;
   uchar8 buf[0x4000];
   int vbits;
+  bool bitPacked;
   uint32 load_flags;
   uint32 getBits(int nbits);
   void skipBytes(int bytes);
@@ -60,6 +62,7 @@ private:
   std::string guessMode();
   ByteStream* input_start;
   uint32 load_flags;
+  void decode14bitPacked(ByteStream stream, int width, int height);
 };
 
 } // namespace RawSpeed
