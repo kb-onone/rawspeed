@@ -34,7 +34,7 @@ class NikonDecompressor :
 public:
   NikonDecompressor(FileMap* file, RawImage img );
 public:
-  void DecompressNikon(ByteStream *meta, uint32 w, uint32 h, uint32 bitsPS, uint32 offset, uint32 size);
+  void DecompressNikon(ByteStream *meta, uint32 w, uint32 h, uint32 bitsPS, uint32 offset, uint32 size, int downshift = 0);
   bool uncorrectedRawValues;
 private:
   void initTable(uint32 huffSelect);

@@ -56,6 +56,7 @@ private:
   string getMode();
   string getExtendedMode(string mode);
   ushort16* gammaCurve(double pwr, double ts, int mode, int imax);
+  int mExtVersion;
 };
 
 class NefSlice {

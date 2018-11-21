@@ -168,7 +168,7 @@ protected:
   /* inputPitch: Number of bytes between each line in the input image */
   /* bitPerPixel: Number of bits to read for each input pixel. */
   /* order: Order of the bits - see Common.h for possibilities. */
-  void readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D& offset, int inputPitch, int bitPerPixel, BitOrder order);
+  void readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D& offset, int inputPitch, int bitPerPixel, BitOrder order, int overrideSkipBits = 0);
 
   /* Faster versions for unpacking 8 bit data */
   void Decode8BitRaw(ByteStream &input, uint32 w, uint32 h);

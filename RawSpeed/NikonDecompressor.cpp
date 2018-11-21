@@ -48,7 +48,7 @@ void NikonDecompressor::initTable(uint32 huffSelect) {
   createHuffmanTable(dctbl1);
 }
 
-void NikonDecompressor::DecompressNikon(ByteStream *metadata, uint32 w, uint32 h, uint32 bitsPS, uint32 offset, uint32 size) {
+void NikonDecompressor::DecompressNikon(ByteStream *metadata, uint32 w, uint32 h, uint32 bitsPS, uint32 offset, uint32 size, int downshift) {
   uint32 v0 = metadata->getByte();
   uint32 v1 = metadata->getByte();
   uint32 huffSelect = 0;
@@ -64,6 +64,9 @@ void NikonDecompressor::DecompressNikon(ByteStream *metadata, uint32 w, uint32 h
 
   if (v0 == 70) huffSelect = 2;
   if (bitsPS == 14) huffSelect += 3;
+
+  if ( v0 == 70 )
+      downshift = 0;
 
   pUp1[0] = metadata->getShort();
   pUp1[1] = metadata->getShort();
@@ -118,14 +121,14 @@ void NikonDecompressor::DecompressNikon(ByteStream *metadata, uint32 w, uint32 h
     pUp2[y&1] += HuffDecodeNikon(bits);
     pLeft1 = pUp1[y&1];
     pLeft2 = pUp2[y&1];
-    rawdata->setWithLookUp(clampbits(pLeft1,15), (uchar8*)dest++, &random);
-    rawdata->setWithLookUp(clampbits(pLeft2,15), (uchar8*)dest++, &random);
+    rawdata->setWithLookUp(clampbits(pLeft1,15) >> downshift, (uchar8*)dest++, &random);
+    rawdata->setWithLookUp(clampbits(pLeft2,15) >>  downshift, (uchar8*)dest++, &random);
     for (x = 1; x < cw; x++) {
       bits.checkPos();
       pLeft1 += HuffDecodeNikon(bits);
       pLeft2 += HuffDecodeNikon(bits);
-      rawdata->setWithLookUp(clampbits(pLeft1,15), (uchar8*)dest++, &random);
-      rawdata->setWithLookUp(clampbits(pLeft2,15), (uchar8*)dest++, &random);
+      rawdata->setWithLookUp(clampbits(pLeft1,15) >>  downshift, (uchar8*)dest++, &random);
+      rawdata->setWithLookUp(clampbits(pLeft2,15) >>  downshift, (uchar8*)dest++, &random);
     }
   }
 

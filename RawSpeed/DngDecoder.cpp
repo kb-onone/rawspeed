@@ -246,7 +246,8 @@ RawImage DngDecoder::decodeRawInternal() {
       try {
         // Let's try loading it as tiles instead
 
-        mRaw->setCpp(raw->getEntry(SAMPLESPERPIXEL)->getInt());
+        int cpp = raw->getEntry(SAMPLESPERPIXEL)->getInt();
+        mRaw->setCpp(cpp);
         mRaw->createData();
 
         if (sample_format != 1)
@@ -437,7 +438,13 @@ RawImage DngDecoder::decodeRawInternal() {
   }
 
  // Default white level is (2 ** BitsPerSample) - 1
-  mRaw->whitePoint = (1 >> raw->getEntry(BITSPERSAMPLE)->getShort()) - 1;
+
+  int bitsPerSample = raw->getEntry(BITSPERSAMPLE)->getShort();
+
+  if ( bitsPerSample > 0 )
+    mRaw->whitePoint = (1 << bitsPerSample) - 1;
+  else
+    mRaw->whitePoint = 65535;
 
   if (raw->hasEntry(WHITELEVEL)) {
     TiffEntry *whitelevel = raw->getEntry(WHITELEVEL);
@@ -579,8 +586,8 @@ bool DngDecoder::decodeBlackLevels(TiffIFD* raw) {
   if (!raw->hasEntry(BLACKLEVEL))
     return TRUE;
 
-  if (mRaw->getCpp() != 1)
-    return FALSE;
+//  if (mRaw->getCpp() != 1)
+//    return FALSE;
 
   TiffEntry* black_entry = raw->getEntry(BLACKLEVEL);
   if ((int)black_entry->count < blackdim.x*blackdim.y)

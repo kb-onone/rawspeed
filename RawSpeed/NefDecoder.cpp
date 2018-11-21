@@ -30,6 +30,7 @@ namespace RawSpeed {
 NefDecoder::NefDecoder(TiffIFD *rootIFD, FileMap* file) :
     RawDecoder(file), mRootIFD(rootIFD) {
   decoderVersion = 5;
+  mExtVersion = 0;
 }
 
 NefDecoder::~NefDecoder(void) {
@@ -54,6 +55,11 @@ RawImage NefDecoder::decodeRawInternal() {
 
   TiffEntry *offsets = raw->getEntry(STRIPOFFSETS);
   TiffEntry *counts = raw->getEntry(STRIPBYTECOUNTS);
+
+  if ( (hints.find(string("nef_ext")) != hints.end() ) )
+       mExtVersion = 1;
+
+
 
   if (!data[0]->getEntry(MODEL)->getString().compare("NIKON D100 ")) {  /**Sigh**/
     if (!mFile->isValid(offsets->getInt()))
@@ -116,7 +122,13 @@ RawImage NefDecoder::decodeRawInternal() {
     else
       metastream = new ByteStreamSwap(meta->getData(), meta->count);
 
-    decompressor.DecompressNikon(metastream, width, height, bitPerPixel, offsets->getInt(), counts->getInt());
+    int downshift = 0;
+    if(hints.find("nef_downshift_if_lossy") != hints.end()) {
+      stringstream convert(hints.find("nef_downshift_if_lossy")->second);
+      convert >> downshift;
+    }
+
+    decompressor.DecompressNikon(metastream, width, height, bitPerPixel, offsets->getInt(), counts->getInt(), downshift);
 
     delete metastream;
   } catch (IOException &e) {
@@ -150,7 +162,9 @@ bool NefDecoder::NEFIsUncompressed(TiffIFD *raw) {
   uint32 height = raw->getEntry(IMAGELENGTH)->getInt();
   uint32 bitPerPixel = raw->getEntry(BITSPERSAMPLE)->getInt();
 
-  return counts->getInt(0) == width*height*bitPerPixel/8;
+  int c = counts->getInt(0);
+
+  return abs(c - int(width*height*bitPerPixel/8) ) < 50000;
 }
 
 /* At least the D810 has a broken firmware that tags uncompressed images
@@ -171,8 +185,13 @@ TiffIFD* NefDecoder::FindBestImage(vector<TiffIFD*>* data) {
   for (int i = 0; i < (int)data->size(); i++) {
     TiffIFD* raw = (*data)[i];
     int width = raw->getEntry(IMAGEWIDTH)->getInt();
-    if (width > largest_width)
+    if (width > largest_width) {
+
+        if ( mExtVersion == 1 ) // Prior to this NefDecoder::FindBestImage would just get the last sub image -- MJ
+            largest_width = width;
+
       best_ifd = raw;
+    }
   }
   if (NULL == best_ifd)
     ThrowRDE("NEF Decoder: Unable to locate image");
@@ -204,7 +223,7 @@ void NefDecoder::DecodeUncompressed() {
 
     offY = MIN(height, offY + yPerSlice);
 
-    if (mFile->isValid(slice.offset, slice.count)) // Only decode if size is valid
+    if (mFile->isValid(slice.offset, slice.count-2)) // Only decode if size is valid
       slices.push_back(slice);
   }
 
@@ -249,8 +268,16 @@ void NefDecoder::DecodeUncompressed() {
         readCoolpixMangledRaw(in, size, pos, width*bitPerPixel / 8);
       else if (hints.find(string("coolpixsplit")) != hints.end())
         readCoolpixSplitRaw(in, size, pos, width*bitPerPixel / 8);
-      else
-        readUncompressedRaw(in, size, pos, width*bitPerPixel / 8, bitPerPixel, bitorder ? BitOrder_Jpeg : BitOrder_Plain);
+      else {
+
+          int skipBits = 0;
+
+          if ( mExtVersion == 1 )
+                skipBits = 64;
+
+        readUncompressedRaw(in, size, pos, (width*bitPerPixel / 8), bitPerPixel, bitorder ? BitOrder_Jpeg : BitOrder_Plain, skipBits);
+
+      }
     } catch (RawDecoderException e) {
       if (i>0)
         mRaw->setError(e.what());
@@ -378,7 +405,12 @@ void NefDecoder::checkSupportInternal(CameraMetaData *meta) {
   string make = data[0]->getEntry(MAKE)->getString();
   string model = data[0]->getEntry(MODEL)->getString();
 
+  if ( this->checkCameraSupported(meta, make, model, "") )
+   if ( (hints.find(string("nef_ext")) != hints.end() ) )
+        mExtVersion = 1;
+
   string mode = getMode();
+
   string extended_mode = getExtendedMode(mode);
 
   if (meta->hasCamera(make, model, extended_mode))
@@ -478,7 +510,7 @@ void NefDecoder::decodeMetaDataInternal(CameraMetaData *meta) {
   0xc6,0x67,0x4a,0xf5,0xa5,0x12,0x65,0x7e,0xb0,0xdf,0xaf,0x4e,0xb3,0x61,0x7f,0x2f};
 
   vector<TiffIFD*> note = mRootIFD->getIFDsWithTag((TiffTag)12);
-  if ( ! note.empty() ) {
+  if (  ! note.empty() ) {
     TiffEntry *wb = note[0]->getEntry((TiffTag)12);
 
     if (wb->count == 4) {

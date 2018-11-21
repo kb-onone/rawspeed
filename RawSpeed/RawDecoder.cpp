@@ -101,7 +101,7 @@ void RawDecoder::decodeUncompressed(TiffIFD *rawIFD, BitOrder order) {
   }
 }
 
-void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D& offset, int inputPitch, int bitPerPixel, BitOrder order) {
+void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D& offset, int inputPitch, int bitPerPixel, BitOrder order, int overrideSkipBits) {
   uchar8* data = mRaw->getData();
   uint32 outPitch = mRaw->pitch;
   uint64 w = size.x;
@@ -120,7 +120,13 @@ void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D
   if (bitPerPixel > 16 && mRaw->getDataType() == TYPE_USHORT16)
     ThrowRDE("readUncompressedRaw: Unsupported bit depth");
 
-  uint32 skipBits = inputPitch - w * cpp * bitPerPixel / 8;  // Skip per line
+  uint32 skipBits;
+
+  if ( overrideSkipBits == 0 )
+        skipBits = inputPitch - w * cpp * bitPerPixel / 8;  // Skip per line
+  else
+        skipBits = overrideSkipBits;
+
   if (oy > (uint64) mRaw->dim.y)
     ThrowRDE("readUncompressedRaw: Invalid y offset");
   if (ox + size.x > (uint64)mRaw->dim.x)
@@ -137,6 +143,8 @@ void RawDecoder::readUncompressedRaw(ByteStream &input, iPoint2D& size, iPoint2D
         input.getData(), inputPitch, w*mRaw->getBpp(), h - y);
     return;
   }
+
+
 
   if (BitOrder_Jpeg == order) {
     BitPumpMSB bits(&input);

@@ -899,6 +899,8 @@ void LJpegPlain::decodeScanLeft4Comps() {
   }
   uchar8 *draw = mRaw->getData();
 
+  bool merge = false;
+
   //Prepare slices (for CR2)
   uint32 slices = (uint32)slicesW.size() * (frame.h - skipY);
   offset = new uint32[slices+1];
@@ -939,10 +941,26 @@ void LJpegPlain::decodeScanLeft4Comps() {
   int p4;
   ushort16 *dest = (ushort16*) & draw[offset[0] & 0x0fffffff];
   ushort16 *predict = dest;
-  *dest++ = p1 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl1);
-  *dest++ = p2 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl2);
-  *dest++ = p3 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl3);
-  *dest++ = p4 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl4);
+
+/*
+  if ( merge ) {
+
+      p1 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl1);
+      p2 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl2);
+      p3 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl3);
+      p4 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl4);
+
+      *dest++ = (p1 + p2) >>1;
+      *dest++ = (p3 + p4) >>1;
+
+  } else {
+*/
+
+      *dest++ = p1 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl1);
+      *dest++ = p2 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl2);
+      *dest++ = p3 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl3);
+      *dest++ = p4 = (1 << (frame.prec - Pt - 1)) + HuffDecode(dctbl4);
+//  }
 
   slice = 1;
   uint32 pixInSlice = (slice_width[0] - 1);
@@ -960,18 +978,31 @@ void LJpegPlain::decodeScanLeft4Comps() {
         break;
 	  
     for (; x < cw ; x++) {
-      p1 += HuffDecode(dctbl1);
-      *dest++ = (ushort16)p1;
 
-      p2 += HuffDecode(dctbl2);
-      *dest++ = (ushort16)p2;
+/*
+        if ( merge ) {
+            p1 += HuffDecode(dctbl1);
+            p2 += HuffDecode(dctbl2);
+            p3 += HuffDecode(dctbl3);
+            p4 += HuffDecode(dctbl4);
 
-      p3 += HuffDecode(dctbl3);
-      *dest++ = (ushort16)p3;
+            *dest++ = ((ushort16)p1 + (ushort16)p2) >> 1;
+            *dest++ = ((ushort16)p3 + (ushort16)p4) >> 1;
 
-      p4 += HuffDecode(dctbl4);
-      *dest++ = (ushort16)p4;
+        } else {
+  */
+              p1 += HuffDecode(dctbl1);
+              *dest++ = (ushort16)p1;
 
+              p2 += HuffDecode(dctbl2);
+              *dest++ = (ushort16)p2;
+
+              p3 += HuffDecode(dctbl3);
+              *dest++ = (ushort16)p3;
+
+              p4 += HuffDecode(dctbl4);
+              *dest++ = (ushort16)p4;
+//        }
 
       if (0 == --pixInSlice) { // Next slice
         if (slice > slices)
